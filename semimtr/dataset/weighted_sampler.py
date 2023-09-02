@@ -23,24 +23,33 @@ class WeightedDatasetRandomSampler(Sampler[int]):
             raise e
         self.dataset_weights = dataset_weights
         self.dataset_sizes = dataset_sizes
-        self.sum_cum = np.cumsum([0] + self.dataset_sizes)
+        self.sum_cum = np.cumsum([0] + self.dataset_sizes) # [0, len(ds1), len(ds1+ds2), ...]
         self.num_datasets = len(dataset_sizes)
 
     def __iter__(self) -> Iterator[int]:
+        # Index generator for each dataset
         self.perm_lists = [EndlessGeneratePermutedIndices(ds_size) for ds_size in self.dataset_sizes]
         return self
 
     def __next__(self) -> int:
         if all([perm_list.finished for perm_list in self.perm_lists]):
-            raise StopIteration
+            raise StopIteration # All sample from all dataset is used
+        # Choose a random dataset
         dataset_idx = np.random.choice(self.num_datasets, p=self.dataset_weights)
+        # Since all dataset is concated, cum_sum[n] + ds[n][idx] <=> get sample[idx] of dataset n
         return self.sum_cum[dataset_idx] + next(self.perm_lists[dataset_idx])
 
     def __len__(self) -> int:
+        # We return max(ds_size/ds_weight) instead of len(concated_ds)
+        # because we have to sampling all sample from all datasets which have sampling weight
         return int(max([ds_size / ds_weight for ds_size, ds_weight in zip(self.dataset_sizes, self.dataset_weights)]))
 
 
 class EndlessGeneratePermutedIndices:
+    r"""
+    Generate an endless permutation list of [0,..,length).
+    `finish` is a flag that notify we finished iterating the list once.
+    """
     def __init__(self, length: int) -> None:
         self.length = length
         self.finished = False

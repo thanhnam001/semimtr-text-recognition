@@ -2,8 +2,9 @@ import logging
 import torch.nn as nn
 
 from semimtr.modules.attention import PositionAttention, Attention
-from semimtr.modules.backbone import ResTranformer
 from semimtr.modules.model import Model
+from semimtr.modules.backbone import ResTranformer
+from semimtr.modules.convvit import ConvViT
 from semimtr.modules.resnet import resnet45
 from semimtr.utils.utils import if_none
 
@@ -12,21 +13,25 @@ class BaseVision(Model):
     def __init__(self, config):
         super().__init__(config)
         self.loss_weight = if_none(config.model_vision_loss_weight, 1.0)
-        self.out_channels = if_none(config.model_vision_d_model, 512)
+        # self.out_channels = if_none(config.model_vision_d_model, 512)
+        self.out_channels = if_none(config.model_vision_d_model, 768) # For MCMAE
 
         if config.model_vision_backbone == 'transformer':
             self.backbone = ResTranformer(config)
+        elif config.model_vision_backbone == 'mcmae':
+            self.backbone = ConvViT(config)
         else:
             self.backbone = resnet45()
 
         if config.model_vision_attention == 'position':
-            mode = if_none(config.model_vision_attention_mode, 'nearest')
+            # mode = if_none(config.model_vision_attention_mode, 'nearest')
             self.attention = PositionAttention(
+                in_channels=768, # For MCMAE
                 max_length=config.dataset_max_length + 1,  # additional stop token
-                mode=mode,
             )
         elif config.model_vision_attention == 'attention':
             self.attention = Attention(
+                in_channels=768, # For MCMAE
                 max_length=config.dataset_max_length + 1,  # additional stop token
                 n_feature=8 * 32,
             )
@@ -36,8 +41,10 @@ class BaseVision(Model):
 
         if config.model_vision_checkpoint is not None:
             logging.info(f'Read vision model from {config.model_vision_checkpoint}.')
-            self.load(config.model_vision_checkpoint, submodule=config.model_vision_checkpoint_submodule,
-                      exclude=config.model_vision_exclude)
+            self.load(config.model_vision_checkpoint,
+                      submodule = config.model_vision_checkpoint_submodule,
+                      exclude = config.model_vision_exclude
+                      )
 
     def forward(self, images, *args, **kwargs):
         features = self.backbone(images)  # (N, E, H, W)

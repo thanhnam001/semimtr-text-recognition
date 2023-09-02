@@ -3,10 +3,10 @@ from fastai.vision import *
 from semimtr.callbacks.callbacks import IterationCallback
 
 
-def test_on_each_ds(learner):
+def test_on_each_ds(learner, config):
     test_dls = dataset_to_dataloader_list(
         learner.data.test_ds,
-        batch_size=learner.data.test_dl.batch_size,
+        batch_size=config.dataset_test_batch_size,
         device=learner.data.device,
         transforms=learner.data.test_dl.tfms,
         collate_fn=learner.data.test_dl.collate_fn

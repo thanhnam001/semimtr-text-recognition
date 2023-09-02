@@ -32,4 +32,5 @@ class ResTranformer(nn.Module):
         feature = self.pos_encoder(feature)
         feature = self.transformer(feature)
         feature = feature.permute(1, 2, 0).view(n, c, h, w)
+        print(feature.shape)
         return feature

@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-
+from collections import defaultdict
 import cv2
 import numpy as np
 import torch
@@ -53,7 +53,7 @@ class CharsetMapper(object):
         charset = {}
         self.null_label = 0
         charset[self.null_label] = self.null_char
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             for i, line in enumerate(f):
                 m = pattern.match(line)
                 assert m, f'Incorrect charset file. line #{i}: {line}'
@@ -312,6 +312,13 @@ class MyDataParallel(nn.DataParallel):
 
 
 class MyConcatDataset(ConcatDataset):
+    # def __init__(self):
+    #     super.__init__()
+    #     if hasattr(self,'cluster_indices'):
+    #         dd = defaultdict(list)
+    #         for d in self.cluster_indices:
+    #             for key, value in d.items():
+    #                 dd[key].append(value)
     def __getattr__(self, k):
         return getattr(self.datasets[0], k)
 

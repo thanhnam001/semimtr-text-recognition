@@ -32,7 +32,7 @@ dataset:
   portion: 1.0
   charset_path: data/charset_36.txt
   num_workers: 4
-  max_length: 25
+  max_length: 1000 # Small number for word dataset, increase for text line
   image_height: 32
   image_width: 128
   case_sensitive: False

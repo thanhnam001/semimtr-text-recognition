@@ -6,10 +6,13 @@ from fastai.vision import *
 from fastai.callbacks.general_sched import GeneralScheduler, TrainingPhase
 
 from semimtr.callbacks.callbacks import IterationCallback, TextAccuracy, TopKTextAccuracy, EMA
+
 from semimtr.dataset.dataset import ImageDataset, TextDataset, collate_fn_filter_none
 from semimtr.dataset.dataset_selfsupervised import ImageDatasetSelfSupervised
 from semimtr.dataset.dataset_consistency_regularization import ImageDatasetConsistencyRegularization
 from semimtr.dataset.weighted_sampler import WeightedDatasetRandomSampler
+from semimtr.dataset.dataset_line import ImageDatasetLine, ClusterRandomSampler
+
 from semimtr.losses.losses import MultiCELosses
 from semimtr.losses.seqclr_loss import SeqCLRLoss
 from semimtr.losses.consistency_regularization_loss import ConsistencyRegularizationLoss
@@ -78,7 +81,7 @@ def _get_language_databaunch(config):
         train_ds=train_ds,
         valid_ds=valid_ds,
         bs=config.dataset_train_batch_size,
-        val_bs=config.dataset_test_batch_size,
+        val_bs=config.dataset_valid_batch_size,
         num_workers=config.dataset_num_workers,
         pin_memory=config.dataset_pin_memory)
     logging.info(f'{len(data.train_ds)} training items found.')
@@ -114,17 +117,25 @@ def _get_databaunch(config):
         train_ds=train_ds,
         valid_ds=valid_ds,
         bs=config.dataset_train_batch_size,
-        val_bs=config.dataset_test_batch_size,
+        val_bs=config.dataset_valid_batch_size,
         num_workers=config.dataset_num_workers,
         pin_memory=config.dataset_pin_memory,
         **bunch_kwargs,
     ).normalize(imagenet_stats)
+    # ???
     ar_tfm = lambda x: ((x[0], x[1]), x[1])  # auto-regression only for dtd
     data.add_tfm(ar_tfm)
+
     if config.dataset_train_weights is not None:
+        # Sampling with weight from label and unlabel training dataset
         weighted_sampler = WeightedDatasetRandomSampler(dataset_weights=config.dataset_train_weights,
                                                         dataset_sizes=[len(ds) for ds in train_ds.datasets])
         data.train_dl = data.train_dl.new(shuffle=False, sampler=weighted_sampler)
+    else:
+        train_sampler = ClusterRandomSampler(train_ds, config.dataset_train_batch_size, shuffle=False)
+        valid_sampler = ClusterRandomSampler(valid_ds, config.dataset_valid_batch_size, shuffle=False)
+        data.train_dl = data.train_dl.new(shuffle=False, sampler=train_sampler)
+        data.valid_dl = data.valid_dl.new(shuffle=False, sampler=valid_sampler)
 
     logging.info(f'{len(data.train_ds)} training items found.')
     if not data.empty_val:
@@ -168,18 +179,21 @@ def _get_learner(config, data, model):
         loss_func = SeqCLRLoss(supervised_flag=config.model_contrastive_supervised_flag)
     elif config.dataset_scheme == 'consistency_regularization':
         loss_func = ConsistencyRegularizationLoss(
-            supervised_flag=config.model_consistency_supervised_flag,
-            all_teacher_layers_to_all_student_layers=config.model_consistency_all_to_all,
-            teacher_layer=config.model_consistency_teacher_layer,
-            student_layer=config.model_consistency_student_layer,
-            teacher_one_hot_labels=config.model_consistency_teacher_one_hot,
-            consistency_kl_div=config.model_consistency_kl_div,
-            teacher_stop_gradients=config.model_consistency_teacher_stop_gradients,
-            use_threshold=config.model_consistency_use_threshold,
+            supervised_flag                          = config.model_consistency_supervised_flag,
+            all_teacher_layers_to_all_student_layers = config.model_consistency_all_to_all,
+            teacher_layer                            = config.model_consistency_teacher_layer,
+            student_layer                            = config.model_consistency_student_layer,
+            teacher_one_hot_labels                   = config.model_consistency_teacher_one_hot,
+            consistency_kl_div                       = config.model_consistency_kl_div,
+            teacher_stop_gradients                   = config.model_consistency_teacher_stop_gradients,
+            use_threshold                            = config.model_consistency_use_threshold,
         )
     else:
         raise NotImplementedError(f'dataset_scheme={config.dataset_scheme} is not supported')
-    learner = Learner(data, model, silent=True, model_dir='.',
+    learner = Learner(data,
+                      model,
+                      silent=True,
+                      model_dir='.',
                       true_wd=config.optimizer_true_wd,
                       wd=config.optimizer_wd,
                       bn_wd=config.optimizer_bn_wd,
@@ -299,7 +313,7 @@ def main():
         logging.info('Finish training.')
 
     logging.info('Start testing')
-    test_on_each_ds(learner)
+    test_on_each_ds(learner, config)
 
 
 if __name__ == '__main__':

@@ -5,9 +5,11 @@ from torchvision import transforms
 from semimtr.utils.transforms import ImageToPIL, ImageToArray
 from semimtr.dataset.dataset import ImageDataset
 from semimtr.dataset.augmentation_pipelines import get_augmentation_pipeline
+from semimtr.dataset.dataset_line import ImageDatasetLine, ImageDatasetLineV2
 
-
-class ImageDatasetSelfSupervised(ImageDataset):
+# If run on only word dataset, inherite ImageDataset instead (line below)
+# class ImageDatasetSelfSupervised(ImageDataset):
+class ImageDatasetSelfSupervised(ImageDatasetLineV2):
     """
     Image Dataset for Self Supervised training that outputs pairs of images
     """

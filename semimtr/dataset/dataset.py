@@ -28,7 +28,7 @@ class ImageDataset(Dataset):
                  is_training: bool = True,
                  img_h: int = 32,
                  img_w: int = 100,
-                 max_length: int = 25,
+                 max_length: int = 25, # Fix this
                  check_length: bool = True,
                  filter_single_punctuation: bool = False,
                  case_sensitive: bool = False,
@@ -45,11 +45,14 @@ class ImageDataset(Dataset):
         self.img_h, self.img_w = img_h, img_w
         self.max_length, self.one_hot_y = max_length, one_hot_y
         self.case_sensitive, self.is_training = case_sensitive, is_training
+        # Filter punctuation
         self.filter_single_punctuation = filter_single_punctuation
+        # Data augmentation for training and multiscale if needed
         self.data_aug, self.multiscales = data_aug, multiscales
         self.charset = CharsetMapper(charset_path, max_length=max_length + 1)
         self.charset_string = ''.join([*self.charset.char_to_label])
-        self.charset_string = re.sub('-', r'\-', self.charset_string)  # escaping the hyphen for later use in regex
+        # Escaping the hyphen for later use in regex
+        self.charset_string = re.sub('-', r'\-', self.charset_string)  
         self.c = self.charset.num_classes
 
         self.env = lmdb.open(str(path), readonly=True, lock=False, readahead=False, meminit=False)
@@ -89,6 +92,7 @@ class ImageDataset(Dataset):
             return True
 
     def resize_multiscales(self, img, borderType=cv2.BORDER_CONSTANT):
+        # Review this later
         def _resize_ratio(img, ratio, fix_h=True):
             if ratio * self.img_w < self.img_h:
                 if fix_h:
@@ -130,10 +134,16 @@ class ImageDataset(Dataset):
                 if not self.case_sensitive: raw_label = raw_label.lower()
                 label = re.sub(f'[^{self.charset_string}]', '', raw_label)
                 # label = re.sub('[^0-9a-zA-Z]+', '', raw_label)
+
+                # Remove image with too long label or missing-label
                 len_issue = 0 < self.max_length < len(label) or len(label) <= 0
+
+                # Remove label has length=1 and is a punctuation 
                 single_punctuation = len(label) == 1 and label in '!"#$%&''()*+,-./:;<=>?@[\]^_`{|}~ '
+
                 if (self.check_length and len_issue) or (self.filter_single_punctuation and single_punctuation):
                     return self._next_image()
+                # Truncate label by max_length. Increase max_length to train with text line.
                 label = label[:self.max_length]
 
                 imgbuf = txn.get(image_key.encode())  # image
@@ -202,13 +212,17 @@ class TextDataset(Dataset):
                  use_sm=False,
                  **kwargs):
         self.path = Path(path)
+        # Case sensitive & spelling mutation
         self.case_sensitive, self.use_sm = case_sensitive, use_sm
+        # ???
         self.smooth_factor, self.smooth_label = smooth_factor, smooth_label
         self.charset = CharsetMapper(charset_path, max_length=max_length + 1)
         # convert the charset to string for regex filtering
         self.charset_string = ''.join([*self.charset.char_to_label])
-        self.charset_string = re.sub('-', r'\-', self.charset_string)  # escaping the hyphen for later use in regex
+        # escaping the hyphen for later use in regex
+        self.charset_string = re.sub('-', r'\-', self.charset_string)  
         self.one_hot_x, self.one_hot_y, self.is_training = one_hot_x, one_hot_y, is_training
+        # Define spelling mutation: Apply random insert/delete/replace characters
         if self.is_training and self.use_sm: self.sm = SpellingMutation(charset=self.charset)
 
         dtype = {'inp': str, 'gt': str}
@@ -229,7 +243,7 @@ class TextDataset(Dataset):
         label_x = torch.tensor(label_x)
         if self.one_hot_x:
             label_x = onehot(label_x, self.charset.num_classes)
-            if self.is_training and self.smooth_label:
+            if self.is_training and self.smooth_label: # Convert one hot to smooth label
                 label_x = torch.stack([self.prob_smooth_label(l) for l in label_x])
         x = {'label': label_x, 'length': length_x}
 
@@ -249,6 +263,9 @@ class TextDataset(Dataset):
         num_classes = len(one_hot)
         noise = torch.rand(num_classes)
         noise = noise / noise.sum() * delta
+        # noise = delta * dist: this meant delta is divide to a list that sum=delta
+        # one_hot * (1 - delta): this meant label =[0,0,...,1-delta,..,0,0]
+        # smoothed_label = label + noise
         one_hot = one_hot * (1 - delta) + noise
         return one_hot
 

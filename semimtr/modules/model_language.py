@@ -53,9 +53,9 @@ class BCNLanguage(Model):
         padding_mask = self._get_padding_mask(lengths, self.max_length)
 
         zeros = embed.new_zeros(*embed.shape)
-        qeury = self.pos_encoder(zeros)
+        query = self.pos_encoder(zeros)
         location_mask = self._get_location_mask(self.max_length, tokens.device)
-        output = self.model(qeury, embed,
+        output = self.model(query, embed,
                             tgt_key_padding_mask=padding_mask,
                             memory_mask=location_mask,
                             memory_key_padding_mask=padding_mask)  # (T, N, E)

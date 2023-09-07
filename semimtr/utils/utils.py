@@ -22,23 +22,25 @@ class CharsetMapper(object):
     def __init__(self,
                  filename='',
                  max_length=30,
+                 space_as_token=False,
                  null_char=u'\u2591'):
         """Creates a lookup table.
 
         Args:
           filename: Path to charset file which maps characters to ids.
           max_sequence_length: The max length of ids and string.
+          space_as_token: Accept white space as character or not
           null_char: A unicode character used to replace '<null>' character.
             the default value is a light shade block '░'.
         """
         self.null_char = null_char
         self.max_length = max_length
-
-        self.label_to_char = self._read_charset(filename)
+        self.space_as_token = space_as_token
+        self.label_to_char = self._read_charset(filename, self.space_as_token)
         self.char_to_label = dict(map(reversed, self.label_to_char.items()))
         self.num_classes = len(self.label_to_char)
 
-    def _read_charset(self, filename):
+    def _read_charset(self, filename, space_as_char):
         """Reads a charset definition from a tab separated text file.
 
         Args:
@@ -53,11 +55,16 @@ class CharsetMapper(object):
         charset = {}
         self.null_label = 0
         charset[self.null_label] = self.null_char
+        start_at = 1
+        if space_as_char:
+            self.space_label = 1
+            charset[self.space_label] = ' '
+            start_at += 1
         with open(filename, 'r', encoding='utf-8') as f:
             for i, line in enumerate(f):
                 m = pattern.match(line)
                 assert m, f'Incorrect charset file. line #{i}: {line}'
-                label = int(m.group(1)) + 1
+                label = int(m.group(1)) + start_at
                 char = m.group(2)
                 charset[label] = char
         return charset
@@ -103,12 +110,16 @@ class CharsetMapper(object):
 
     @property
     def alphabets(self):
-        all_chars = list(self.char_to_label.keys())
-        valid_chars = []
-        for c in all_chars:
-            if c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ':
-                valid_chars.append(c)
-        return ''.join(valid_chars)
+        return '''aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFg
+        GhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsSt
+        TuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ'''
+        # all_chars = list(self.char_to_label.keys())
+        # valid_chars = []
+        # for c in all_chars:
+        #     # if c in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ':
+        #     if c in self.alphabets_only:
+        #         valid_chars.append(c)
+        # return ''.join(valid_chars)
 
     @property
     def alphabet_labels(self):

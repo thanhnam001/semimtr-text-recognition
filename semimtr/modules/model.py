@@ -14,7 +14,9 @@ class Model(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.max_length = config.dataset_max_length + 1
-        self.charset = CharsetMapper(config.dataset_charset_path, max_length=self.max_length)
+        self.charset = CharsetMapper(config.dataset_charset_path, 
+                                     max_length=self.max_length,
+                                     space_as_token=config.dataset_space_as_token)
 
     def load(self, source, device=None, strict=True, submodule=None, exclude=None):
         state = torch.load(source, map_location=device)

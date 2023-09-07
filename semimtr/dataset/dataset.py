@@ -21,14 +21,21 @@ from semimtr.utils.utils import CharsetMapper, onehot
 
 
 class ImageDataset(Dataset):
-    "`ImageDataset` read data from LMDB database."
-
+    '''
+    `ImageDataset` read data from LMDB database, resize image and truncate label.
+    Support resize type:
+        - `consistent`: resize images to same shape
+        - `varied`: resize images to same height, keep ratio and round width to multiple of 8
+        - `padded`: resize images to same height, pad images by background to have same width
+    '''
     def __init__(self,
                  path: Union[Path, str],
                  is_training: bool = True,
                  img_h: int = 32,
                  img_w: int = 100,
+                 resize_type: str = 'consistent',
                  max_length: int = 25, # Fix this
+                 space_as_token: bool = False,
                  check_length: bool = True,
                  filter_single_punctuation: bool = False,
                  case_sensitive: bool = False,
@@ -42,14 +49,19 @@ class ImageDataset(Dataset):
         self.path, self.name = Path(path), Path(path).name
         assert self.path.is_dir() and self.path.exists(), f"{path} is not a valid directory."
         self.convert_mode, self.check_length = convert_mode, check_length
-        self.img_h, self.img_w = img_h, img_w
+        # By default, image min width = image height
+        self.img_h, self.img_min_w, self.img_max_w = img_h, img_h, img_w
+        # Resize type will affect how image is standardize
+        assert resize_type in ['consistent', 'varied', 'padded'], \
+            f'{resize_type} is not supported'
+        self.resize_type = resize_type
         self.max_length, self.one_hot_y = max_length, one_hot_y
         self.case_sensitive, self.is_training = case_sensitive, is_training
         # Filter punctuation
         self.filter_single_punctuation = filter_single_punctuation
         # Data augmentation for training and multiscale if needed
         self.data_aug, self.multiscales = data_aug, multiscales
-        self.charset = CharsetMapper(charset_path, max_length=max_length + 1)
+        self.charset = CharsetMapper(charset_path, max_length=max_length + 1, space_as_token=space_as_token)
         self.charset_string = ''.join([*self.charset.char_to_label])
         # Escaping the hyphen for later use in regex
         self.charset_string = re.sub('-', r'\-', self.charset_string)  
@@ -91,19 +103,32 @@ class ImageDataset(Dataset):
         else:
             return True
 
+    def standardize_width(self, img):
+        # As expected, Dataset will only use this to process images
+        # in np.array type, which means this image is just read and converted to np,
+        # and currently has no other applied operation. Any other type needs to be rechecked.
+        if len(img.shape)==3:
+            current_h, current_w, _ = img.shape
+        else:
+            raise Exception('Something went wrong here!!!')
+        round_to = 8
+        new_w = math.ceil(self.img_h * current_w/current_h / round_to) * round_to
+        new_w = np.clip(new_w, self.img_min_w, self.img_max_w)
+        return new_w
+
     def resize_multiscales(self, img, borderType=cv2.BORDER_CONSTANT):
         # Review this later
         def _resize_ratio(img, ratio, fix_h=True):
-            if ratio * self.img_w < self.img_h:
+            if ratio * self.img_max_w < self.img_h:
                 if fix_h:
                     trg_h = self.img_h
                 else:
-                    trg_h = int(ratio * self.img_w)
-                trg_w = self.img_w
+                    trg_h = int(ratio * self.img_max_w)
+                trg_w = self.img_max_w
             else:
                 trg_h, trg_w = self.img_h, int(self.img_h / ratio)
             img = cv2.resize(img, (trg_w, trg_h))
-            pad_h, pad_w = (self.img_h - trg_h) / 2, (self.img_w - trg_w) / 2
+            pad_h, pad_w = (self.img_h - trg_h) / 2, (self.img_max_w - trg_w) / 2
             top, bottom = math.ceil(pad_h), math.floor(pad_h)
             left, right = math.ceil(pad_w), math.floor(pad_w)
             img = cv2.copyMakeBorder(img, top, bottom, left, right, borderType)
@@ -111,7 +136,7 @@ class ImageDataset(Dataset):
 
         if self.is_training:
             if random.random() < 0.5:
-                base, maxh, maxw = self.img_h, self.img_h, self.img_w
+                base, maxh, maxw = self.img_h, self.img_h, self.img_max_w
                 h, w = random.randint(base, maxh), random.randint(base, maxw)
                 return _resize_ratio(img, h / w)
             else:
@@ -120,10 +145,24 @@ class ImageDataset(Dataset):
             return _resize_ratio(img, img.shape[0] / img.shape[1])  # keep aspect ratio
 
     def resize(self, img):
-        if self.multiscales:
-            return self.resize_multiscales(img, cv2.BORDER_REPLICATE)
+        if self.resize_type == 'consistent':
+            if self.multiscales:
+                return self.resize_multiscales(img, cv2.BORDER_REPLICATE)
+            else:
+                return cv2.resize(img, (self.img_max_w, self.img_h))
+        elif self.resize_type == 'varied':
+            new_w = self.standardize_width(img)
+            return cv2.resize(img, (new_w, self.img_h))
+        elif self.resize_type == 'padded':
+            color = np.mean([img[0,0], img[-1,-1], img[0,-1], img[-1,0]], axis=0)
+
+            new_w = self.standardize_width(img)
+            new_im = cv2.resize(img, (new_w, self.img_h))
+            # Pad image with a solid color
+            padding = np.tile(color,(self.img_h, self.img_max_w-new_w, 1))
+            return np.concatenate([new_im, padding],axis=1).astype(np.uint8)
         else:
-            return cv2.resize(img, (self.img_w, self.img_h))
+            raise NotImplementedError()
 
     def get(self, idx):
         with self.env.begin(write=False) as txn:
@@ -203,6 +242,7 @@ class TextDataset(Dataset):
                  delimiter: str = '\t',
                  max_length: int = 25,
                  charset_path: str = 'data/charset_36.txt',
+                 space_as_token: bool = False,
                  case_sensitive=False,
                  one_hot_x=True,
                  one_hot_y=True,
@@ -214,9 +254,9 @@ class TextDataset(Dataset):
         self.path = Path(path)
         # Case sensitive & spelling mutation
         self.case_sensitive, self.use_sm = case_sensitive, use_sm
-        # ???
+        # Convert hard label to smooth label
         self.smooth_factor, self.smooth_label = smooth_factor, smooth_label
-        self.charset = CharsetMapper(charset_path, max_length=max_length + 1)
+        self.charset = CharsetMapper(charset_path, max_length=max_length + 1,space_as_token=space_as_token)
         # convert the charset to string for regex filtering
         self.charset_string = ''.join([*self.charset.char_to_label])
         # escaping the hyphen for later use in regex

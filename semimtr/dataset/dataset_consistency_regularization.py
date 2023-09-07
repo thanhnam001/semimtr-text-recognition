@@ -5,10 +5,8 @@ from torchvision import transforms
 from semimtr.utils.transforms import ImageToPIL, ImageToArray
 from semimtr.dataset.dataset import ImageDataset
 from semimtr.dataset.augmentation_pipelines import get_augmentation_pipeline
-from semimtr.dataset.dataset_line import ImageDatasetLine, ImageDatasetLineV2
 
-class ImageDatasetConsistencyRegularization(ImageDatasetLineV2):
-# class ImageDatasetConsistencyRegularization(ImageDataset):
+class ImageDatasetConsistencyRegularization(ImageDataset):
     """
     Image Dataset for Self Supervised training that outputs pairs of images
     """

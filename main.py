@@ -11,7 +11,7 @@ from semimtr.dataset.dataset import ImageDataset, TextDataset, collate_fn_filter
 from semimtr.dataset.dataset_selfsupervised import ImageDatasetSelfSupervised
 from semimtr.dataset.dataset_consistency_regularization import ImageDatasetConsistencyRegularization
 from semimtr.dataset.weighted_sampler import WeightedDatasetRandomSampler
-from semimtr.dataset.dataset_line import ImageDatasetLine, ClusterRandomSampler
+from semimtr.dataset.cluster_sampler import ClusterRandomSampler
 
 from semimtr.losses.losses import MultiCELosses
 from semimtr.losses.seqclr_loss import SeqCLRLoss
@@ -43,6 +43,7 @@ def _get_dataset(ds_type, paths, is_training, config, **kwargs):
     kwargs.update({
         'img_h': config.dataset_image_height,
         'img_w': config.dataset_image_width,
+        'resize_type': config.dataset_resize_type,
         'max_length': config.dataset_max_length,
         'case_sensitive': config.dataset_case_sensitive,
         'charset_path': config.dataset_charset_path,
@@ -126,16 +127,17 @@ def _get_databaunch(config):
     ar_tfm = lambda x: ((x[0], x[1]), x[1])  # auto-regression only for dtd
     data.add_tfm(ar_tfm)
 
-    if config.dataset_train_weights is not None:
-        # Sampling with weight from label and unlabel training dataset
-        weighted_sampler = WeightedDatasetRandomSampler(dataset_weights=config.dataset_train_weights,
-                                                        dataset_sizes=[len(ds) for ds in train_ds.datasets])
-        data.train_dl = data.train_dl.new(shuffle=False, sampler=weighted_sampler)
-    else:
+    if config.dataset_resize_type == 'varied':
+        # If resize_type is varied, data is sampling by its width
         train_sampler = ClusterRandomSampler(train_ds, config.dataset_train_batch_size, shuffle=False)
         valid_sampler = ClusterRandomSampler(valid_ds, config.dataset_valid_batch_size, shuffle=False)
         data.train_dl = data.train_dl.new(shuffle=False, sampler=train_sampler)
         data.valid_dl = data.valid_dl.new(shuffle=False, sampler=valid_sampler)
+    elif config.dataset_train_weights is not None:
+        # Sampling with weight from label and unlabel training dataset
+        weighted_sampler = WeightedDatasetRandomSampler(dataset_weights=config.dataset_train_weights,
+                                                        dataset_sizes=[len(ds) for ds in train_ds.datasets])
+        data.train_dl = data.train_dl.new(shuffle=False, sampler=weighted_sampler)
 
     logging.info(f'{len(data.train_ds)} training items found.')
     if not data.empty_val:
@@ -162,6 +164,7 @@ def _get_learner(config, data, model):
             k=if_none(config.model_k, 5),
             charset_path=config.dataset_charset_path,
             max_length=config.dataset_max_length + 1,
+            space_as_token=config.dataset_space_as_token,
             case_sensitive=config.dataset_eval_case_sensitive,
             model_eval=config.model_eval)]
     elif config.dataset_scheme == 'selfsupervised' and not config.model_contrastive_supervised_flag:
@@ -170,6 +173,7 @@ def _get_learner(config, data, model):
         metrics = [TextAccuracy(
             charset_path=config.dataset_charset_path,
             max_length=config.dataset_max_length + 1,
+            space_as_token=config.dataset_space_as_token,
             case_sensitive=config.dataset_eval_case_sensitive,
             model_eval=config.model_eval)]
     opt_type = getattr(torch.optim, config.optimizer_type)

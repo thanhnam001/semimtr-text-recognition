@@ -19,16 +19,21 @@ class SeqCLRLoss(nn.Module):
         return self.losses
 
     def _seqclr_loss(self, features0, features1, n_instances_per_view, n_instances_per_image):
-        instances = torch.cat((features0, features1), dim=0)
+        instances = torch.cat((features0, features1), dim=0) # (2*N*I, C)
         normalized_instances = F.normalize(instances, dim=1)
-        similarity_matrix = normalized_instances @ normalized_instances.T
-        similarity_matrix_exp = (similarity_matrix / self.temp).exp_()
-        cross_entropy_denominator = similarity_matrix_exp.sum(dim=1) - similarity_matrix_exp.diag()
+        similarity_matrix = normalized_instances @ normalized_instances.T # (2*N*I, 2*N*I)
+        similarity_matrix_exp = (similarity_matrix / self.temp).exp_() # e^(sim)
+        # See function (3) in paper for more detail
+        # remove similarity of its self
+        cross_entropy_denominator = similarity_matrix_exp.sum(dim=1) - similarity_matrix_exp.diag() # e^ - diag(e^) = (2*N*I)
+
         cross_entropy_nominator = torch.cat((
-            similarity_matrix_exp.diagonal(offset=n_instances_per_view)[:n_instances_per_view],
-            similarity_matrix_exp.diagonal(offset=-n_instances_per_view)
-        ), dim=0)
-        cross_entropy_similarity = cross_entropy_nominator / cross_entropy_denominator
+            # get upper diagonal at n_instances_per_view and truncate
+            similarity_matrix_exp.diagonal(offset=n_instances_per_view)[:n_instances_per_view], # (n_instances_per_view, )
+            # get lower diagonal at n_instances_per_view
+            similarity_matrix_exp.diagonal(offset=-n_instances_per_view) # (2*N*I - n_instances_per_view,)
+        ), dim=0) # (2*N*I)
+        cross_entropy_similarity = cross_entropy_nominator / cross_entropy_denominator # (2*N*I)
         loss = - cross_entropy_similarity.log()
 
         if self.reduction == "batchmean":
@@ -66,8 +71,9 @@ class SeqCLRLoss(nn.Module):
                 seqclr_loss += self._seqclr_loss(features0, features1, n_instances_per_view, n_instances_per_image)
             seqclr_loss /= len(outputs['instances_view0'])  # Average seqclr losses
         else:
-            features0 = torch.flatten(outputs['instances_view0'], start_dim=0, end_dim=1)
-            features1 = torch.flatten(outputs['instances_view1'], start_dim=0, end_dim=1)
+            # outputs['instances_view0].shape = (N, I, C). If AdaptiveAvgPool2d then I=5
+            features1 = torch.flatten(outputs['instances_view1'], start_dim=0, end_dim=1) # (N*I, C)
+            features0 = torch.flatten(outputs['instances_view0'], start_dim=0, end_dim=1) # (N*I, C)
             n_instances_per_image = outputs['instances_view0'].shape[1]
             n_instances_per_view = outputs['instances_view0'].shape[0] * n_instances_per_image
             seqclr_loss += self._seqclr_loss(features0, features1, n_instances_per_view, n_instances_per_image)

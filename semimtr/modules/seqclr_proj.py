@@ -57,8 +57,8 @@ class SeqCLRProj(Model):
         features = output[self.working_layer]
         if self.working_layer == 'backbone_feature':
             features = features.permute(0, 2, 3, 1).flatten(1, 2)  # (N, E, H, W) -> (N, H*W, E)
-        projected_features = self.projection(features)
-        projected_instances = self.instance_mapping_func(projected_features)
+        projected_features = self.projection(features) # (N, H*W, E) -> (N, H*W, C)
+        projected_instances = self.instance_mapping_func(projected_features) # (N, 5, C) for AdaptiveAvgPool2d
         return {'instances': projected_instances, 'name': 'projection_head'}
 
     def forward(self, output, *args):

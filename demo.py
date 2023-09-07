@@ -113,6 +113,7 @@ def main():
     model = get_model(config).to(device)
     model = load(model, config.model_checkpoint, device=device)
     charset = CharsetMapper(filename=config.dataset_charset_path,
+                            space_as_token=config.dataset_space_as_token,
                             max_length=config.dataset_max_length + 1)
 
     if os.path.isdir(args.input):

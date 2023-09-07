@@ -196,11 +196,12 @@ class EMA(LearnerCallback):
 class TextAccuracy(Callback):
     _names = ['ccr', 'cwr', 'ted', 'ned', 'ted/w']
 
-    def __init__(self, charset_path, max_length, case_sensitive, model_eval):
+    def __init__(self, charset_path, max_length, space_as_token, case_sensitive, model_eval):
         self.charset_path = charset_path
         self.max_length = max_length
         self.case_sensitive = case_sensitive
-        self.charset = CharsetMapper(charset_path, self.max_length)
+        self.space_as_token = space_as_token
+        self.charset = CharsetMapper(charset_path, self.max_length, self.space_as_token)
         self.names = self._names
 
         self.model_eval = model_eval or 'alignment'
@@ -309,12 +310,13 @@ class TextAccuracy(Callback):
 class TopKTextAccuracy(TextAccuracy):
     _names = ['ccr', 'cwr']
 
-    def __init__(self, k, charset_path, max_length, case_sensitive, model_eval):
+    def __init__(self, k, charset_path, max_length, space_as_token, case_sensitive, model_eval):
         self.k = k
         self.charset_path = charset_path
         self.max_length = max_length
+        self.space_as_token = space_as_token
         self.case_sensitive = case_sensitive
-        self.charset = CharsetMapper(charset_path, self.max_length)
+        self.charset = CharsetMapper(charset_path, self.max_length, self.space_as_token)
         self.names = self._names
 
     def on_epoch_begin(self, **kwargs):

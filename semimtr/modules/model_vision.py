@@ -48,8 +48,8 @@ class BaseVision(Model):
 
     def forward(self, images, *args, **kwargs):
         features = self.backbone(images)  # (N, E, H, W)
-        attn_vecs, attn_scores = self.attention(features)  # (N, T, E), (N, T, H, W)
-        logits = self.cls(attn_vecs)  # (N, T, C)
+        attn_vecs, attn_scores = self.attention(features)  # (N, L, E), (N, L, H, W)
+        logits = self.cls(attn_vecs)  # (N, L, C)
         pt_lengths = self._get_length(logits)
 
         return {'feature': attn_vecs, 'logits': logits, 'pt_lengths': pt_lengths,

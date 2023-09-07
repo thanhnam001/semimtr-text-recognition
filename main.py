@@ -71,6 +71,7 @@ def _get_language_databaunch(config):
         'max_length': config.dataset_max_length,
         'case_sensitive': config.dataset_case_sensitive,
         'charset_path': config.dataset_charset_path,
+        'space_as_token': config.dataset_space_as_token,
         'smooth_label': config.dataset_smooth_label,
         'smooth_factor': config.dataset_smooth_factor,
         'use_sm': config.dataset_use_sm,
@@ -316,8 +317,9 @@ def main():
                     lr=config.optimizer_lr)
         logging.info('Finish training.')
 
-    logging.info('Start testing')
-    test_on_each_ds(learner, config)
+    if data.test_dl is not None:
+        logging.info('Start testing')
+        test_on_each_ds(learner, config)
 
 
 if __name__ == '__main__':

@@ -8,22 +8,23 @@ global:
 dataset:
   train: {
     roots: [
-        'data/WikiText-103.csv',
+        'data/vi1.csv',
     ],
     batch_size: 4
   }
   valid: {
     roots: [
-        'data/WikiText-103_eval_d1.csv',
+        'data/vi2.csv',
     ],
     batch_size: 4
   }
   charset_path: data/charset_227.txt
   case_sensitive: True
-  space_as_token: True
+  space_as_token: False
+  num_workers: 0
 
 training:
-  epochs: 80
+  epochs: 8
   show_iters: 50
   eval_iters: 6000
   save_iters: 3000

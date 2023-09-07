@@ -40,7 +40,7 @@ class CharsetMapper(object):
         self.char_to_label = dict(map(reversed, self.label_to_char.items()))
         self.num_classes = len(self.label_to_char)
 
-    def _read_charset(self, filename, space_as_char):
+    def _read_charset(self, filename, space_as_token):
         """Reads a charset definition from a tab separated text file.
 
         Args:
@@ -56,7 +56,7 @@ class CharsetMapper(object):
         self.null_label = 0
         charset[self.null_label] = self.null_char
         start_at = 1
-        if space_as_char:
+        if space_as_token:
             self.space_label = 1
             charset[self.space_label] = ' '
             start_at += 1

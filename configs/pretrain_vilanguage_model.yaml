@@ -21,7 +21,6 @@ dataset:
   charset_path: data/charset_227.txt
   case_sensitive: True
   space_as_token: False
-  num_workers: 0
 
 training:
   epochs: 8
@@ -44,6 +43,7 @@ optimizer:
 model:
   name: 'semimtr.modules.model_language.BCNLanguage'
   language: {
+    d_model: 768,
     num_layers: 4,
     loss_weight: 1.,
     use_self_attn: False

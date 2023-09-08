@@ -1,6 +1,9 @@
 Labels
 
 workdir/
+tools/tmp
+tools/vi
+*.ipynb
 *.mdb
 .vscode
 *.csv

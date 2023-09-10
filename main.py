@@ -47,6 +47,7 @@ def _get_dataset(ds_type, paths, is_training, config, **kwargs):
         'max_length': config.dataset_max_length,
         'case_sensitive': config.dataset_case_sensitive,
         'charset_path': config.dataset_charset_path,
+        'space_as_token': config.dataset_space_as_token,
         'data_aug': config.dataset_data_aug,
         'deteriorate_ratio': config.dataset_deteriorate_ratio,
         'multiscales': config.dataset_multiscales,

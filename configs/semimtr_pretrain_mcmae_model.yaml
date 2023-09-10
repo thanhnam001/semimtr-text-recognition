@@ -39,7 +39,9 @@ dataset:
   multiscales: False
   num_workers: 0
   augmentation_severity: 1
-  charset_path: 'data/charset_227.txt'
+  case_sensitive: True
+  space_as_token: True
+  charset_path: 'data/charset_hw.txt'
 
 training:
   epochs: 3

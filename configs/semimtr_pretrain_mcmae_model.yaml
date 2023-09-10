@@ -11,8 +11,8 @@ dataset:
   resize_type: 'padded'
   train: {
     roots: [
-        'data/training/label/real',
-        'data/training/unlabel',
+        'data/hw/training/label',
+        'data/hw/training/unlabel',
     ],
     # weights: ~,
     weights: [ 0.5, 0.5],
@@ -20,13 +20,13 @@ dataset:
   }
   valid: {
     roots: [
-        'data/validation',
+        'data/hw/validation',
     ],
     batch_size: 2
   }
   test: {
     roots: [
-        'data/evaluation',
+        'data/hw/evaluation',
         # 'data/evaluation/addition',
     ],
     batch_size: 1

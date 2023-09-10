@@ -8,7 +8,7 @@ global:
 dataset:
   scheme: consistency_regularization
   type: ST
-  resize_type: 'padded'
+  resize_type: 'consistent'
   train: {
     roots: [
         'data/training/label',
@@ -31,13 +31,16 @@ dataset:
   }
   image: {
     height: 32,
-    width: 512,
+    width: 128,
   }
   data_aug: True
   multiscales: False
   num_workers: 0
   augmentation_severity: 1
-  charset_path: 'data/charset_227.txt'
+  charset_path: 'data/charset_bkai.txt'
+  max_length: 25
+  case_sensitive: True
+  space_as_token: False
 
 training:
   epochs: 1
@@ -66,6 +69,17 @@ model:
     attention: 'position',
     backbone: 'mcmae',
     backbone_ln: 3,
+    patch_size: [[2, 2],[1, 1],[2, 2]], 
+    in_chans: 3,
+    embed_dim: [256, 384, 768],
+    depth: [2, 2, 7],
+    num_heads: 6,
+    mlp_ratio: [4, 4, 4],
+    qkv_bias: False,
+    qk_scale: ~,
+    drop_rate: 0.,
+    attn_drop_rate: 0.,
+    drop_path_rate: 0.,
     # checkpoint_submodule: vision,
   }
   language: {

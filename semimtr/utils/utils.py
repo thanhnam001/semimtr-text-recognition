@@ -110,9 +110,7 @@ class CharsetMapper(object):
 
     @property
     def alphabets(self):
-        return '''aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFg
-        GhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsSt
-        TuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ'''
+        return 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ'
         # all_chars = list(self.char_to_label.keys())
         # valid_chars = []
         # for c in all_chars:
@@ -183,7 +181,7 @@ class Logger(object):
         except:
             pass
         config_path = os.path.join(output_dir, f'{phase}.txt')
-        Logger._handle = logging.FileHandler(config_path)
+        Logger._handle = logging.FileHandler(config_path, encoding='utf-8')
         Logger._root = logging.getLogger()
 
     @staticmethod

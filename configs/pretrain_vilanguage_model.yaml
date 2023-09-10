@@ -10,7 +10,7 @@ dataset:
     roots: [
         'data/vi1.csv',
     ],
-    batch_size: 4
+    batch_size: 16
   }
   valid: {
     roots: [
@@ -23,7 +23,7 @@ dataset:
   space_as_token: False
 
 training:
-  epochs: 8
+  epochs: 15
   show_iters: 50
   eval_iters: 6000
   save_iters: 3000
@@ -36,7 +36,7 @@ optimizer:
   clip_grad: 20
   lr: 0.0001
   scheduler: {
-    periods: [ 70, 10 ],
+    periods: [ 12, 3 ],
     gamma: 0.1,
   }
 
@@ -44,6 +44,8 @@ model:
   name: 'semimtr.modules.model_language.BCNLanguage'
   language: {
     d_model: 768,
+    nhead: 4,
+    d_inner: 1024,
     num_layers: 4,
     loss_weight: 1.,
     use_self_attn: False

@@ -107,9 +107,9 @@ def main():
 
     Logger.init(config.global_workdir, config.global_name, config.global_phase)
     Logger.enable_file()
-    logging.info(config)
+    # logging.info(config)
 
-    logging.info('Construct model.')
+    # logging.info('Construct model.')
     model = get_model(config).to(device)
     model = load(model, config.model_checkpoint, device=device)
     charset = CharsetMapper(filename=config.dataset_charset_path,
@@ -130,12 +130,14 @@ def main():
         res = model(img, forward_only_teacher=True)
         pt_text, _, __ = postprocess(res, charset, config.model_eval)
         pt_outputs[path] = pt_text[0]
-        logging.info(f'SemiMTR Prediction of the path: {path} is: {pt_text[0]}')
+        # logging.info(f'SemiMTR Prediction of the path: {path} is: {pt_text[0]}')
+        logging.info(f'{os.path.basename(path)} {pt_text[0]}')
     return pt_outputs
 
 
 if __name__ == '__main__':
     pt_outputs = main()
-    logging.info('Finished!')
-    for k, v in pt_outputs.items():
-        print(k, v)
+    print('Finish!')
+    # logging.info('Finished!')
+    # for k, v in pt_outputs.items():
+    #     print(k, v)

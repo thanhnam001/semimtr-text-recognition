@@ -1,5 +1,6 @@
 Labels
-
+*.jpg
+*.png
 workdir/
 tools/tmp
 tools/vi

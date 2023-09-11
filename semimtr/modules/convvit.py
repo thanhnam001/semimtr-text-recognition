@@ -5,6 +5,7 @@ from einops import rearrange
 import math
 import warnings
 from semimtr.utils.utils import if_none
+import logging
 
 def _trunc_normal_(tensor, mean, std, a, b):
     # Cut & paste from PyTorch official master until it's in a few official releases - RW
@@ -145,13 +146,14 @@ class ConvViT(nn.Module):
         trunc_normal_(self.pos_embed, std=.02)
         self.apply(self._init_weights)
         if config.model_vision_mcmae_checkpoint is not None:
+            logging.info(f'Read vision MCMAE from {config.model_vision_checkpoint}.')
             state_dict = torch.load(config.model_vision_mcmae_checkpoint, map_location=None)
 
             for name, param in self.named_parameters():
                 if name not in state_dict:
-                    print('{} not found'.format(name))
+                    logging.info('{} not found'.format(name))
                 elif state_dict[name].shape != param.shape:
-                    print('{} missmatching shape, required {} but found {}'.format(name, param.shape, state_dict[name].shape))
+                    logging.info('{} missmatching shape, required {} but found {}'.format(name, param.shape, state_dict[name].shape))
                     del state_dict[name]
 
             self.load_state_dict(state_dict, strict=False)

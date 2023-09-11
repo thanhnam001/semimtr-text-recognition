@@ -146,7 +146,7 @@ class ConvViT(nn.Module):
         trunc_normal_(self.pos_embed, std=.02)
         self.apply(self._init_weights)
         if config.model_vision_mcmae_checkpoint is not None:
-            logging.info(f'Read vision MCMAE from {config.model_vision_checkpoint}.')
+            logging.info(f'Read vision MCMAE from {config.model_vision_mcmae_checkpoint}.')
             state_dict = torch.load(config.model_vision_mcmae_checkpoint, map_location=None)
 
             for name, param in self.named_parameters():

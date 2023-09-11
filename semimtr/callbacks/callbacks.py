@@ -168,10 +168,14 @@ class IterationCallback(LearnerTensorboardWriter):
         log_str += f'eval loss = {metrics[0]:6.3f},  '
         names = ['eval_loss']
         if len(metrics) > 1:
-            log_str += f'ccr = {metrics[1]:6.3f},  cwr = {metrics[2]:6.3f},  ' \
-                       f'ted = {metrics[3]:6.3f},  ned = {metrics[4]:6.0f},  ' \
-                       f'ted/w = {metrics[5]:6.3f}, '
-            names += ['ccr', 'cwr', 'ted', 'ned', 'ted/w']
+            log_str += f'ccr = {metrics[1]:6.3f},  ' \
+                       f'cwr = {metrics[2]:6.3f},  ' \
+                       f'ted = {metrics[3]:6.3f},  ' \
+                       f'ned = {metrics[4]:6.0f},  ' \
+                       f'ted/w = {metrics[5]:6.3f},  ' \
+                       f'cer = {metrics[6]:6.3f},  '  \
+                       f'wer = {metrics[7]:6.3f},  '
+            names += ['ccr', 'cwr', 'ted', 'ned', 'ted/w', 'cer', 'wer']
         logging.info(log_str)
         return names
 
@@ -194,7 +198,17 @@ class EMA(LearnerCallback):
 
 
 class TextAccuracy(Callback):
-    _names = ['ccr', 'cwr', 'ted', 'ned', 'ted/w']
+    '''
+    Metrics:
+        - `ccr`: Correct character rate
+        - `cwr`: Correct word rate
+        - `ted`: Total edit distance by char
+        - `ned`: Normalized edit distance
+        - `ted/w`: Average edit distance
+        - `cer`: Character error rate
+        - `wer`: Word error rate
+    '''
+    _names = ['ccr', 'cwr', 'ted', 'ned', 'ted/w', 'cer', 'wer']
 
     def __init__(self, charset_path, max_length, space_as_token, case_sensitive, model_eval):
         self.charset_path = charset_path
@@ -208,12 +222,13 @@ class TextAccuracy(Callback):
         assert self.model_eval in ['vision', 'language', 'alignment']
 
     def on_epoch_begin(self, **kwargs):
-        self.total_num_char = 0.
-        self.total_num_word = 0.
-        self.correct_num_char = 0.
-        self.correct_num_word = 0.
-        self.total_ed = 0.
-        self.total_ned = 0.
+        self.total_num_char     = 0.
+        self.total_num_word     = 0.
+        self.correct_num_char   = 0.
+        self.correct_num_word   = 0.
+        self.total_ed           = 0. # Edit distance for char
+        self.total_ned          = 0.
+        self.total_word_ed      = 0. # Edit distance for word
 
     @staticmethod
     def _extract_output_list(last_output):
@@ -272,9 +287,19 @@ class TextAccuracy(Callback):
             self.total_ed += distance
             self.total_ned += float(distance) / max(len(gt_text[i]), 1)
 
-            if gt_text[i] == pt_text[i]:
-                self.correct_num_word += 1
-            self.total_num_word += 1
+            if self.space_as_token: # This is for text line
+                splitted_pt_text = pt_text[i].split()
+                splitted_gt_text = gt_text[i].split()
+                w_distance = ed.eval(splitted_pt_text, splitted_gt_text)
+                self.total_word_ed += w_distance
+                for j in range(min(len(splitted_pt_text), len(splitted_gt_text))):
+                    if splitted_pt_text[j] == splitted_gt_text[j]:
+                        self.correct_num_word += 1
+                self.total_num_word += len(splitted_gt_text)
+            else: # This is for word only
+                if gt_text[i] == pt_text[i]:
+                    self.correct_num_word += 1
+                self.total_num_word += 1
 
             for j in range(min(len(gt_text[i]), len(pt_text[i]))):
                 if gt_text[i][j] == pt_text[i][j]:
@@ -288,7 +313,10 @@ class TextAccuracy(Callback):
                 self.correct_num_word / self.total_num_word,
                 self.total_ed,
                 self.total_ned,
-                self.total_ed / self.total_num_word]
+                self.total_ed / self.total_num_word,
+                self.total_ed / self.total_num_char,
+                self.total_word_ed / self.total_num_word
+                ]
         return add_metrics(last_metrics, mets)
 
     def decode(self, logit):
@@ -346,5 +374,9 @@ class TopKTextAccuracy(TextAccuracy):
     def on_epoch_end(self, last_metrics, **kwargs):
         mets = [self.correct_num_char / self.total_num_char,
                 self.correct_num_word / self.total_num_word,
-                0., 0., 0.]
+                0.,
+                0.,
+                0.,
+                0.,
+                0.]
         return add_metrics(last_metrics, mets)

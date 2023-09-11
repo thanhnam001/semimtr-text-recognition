@@ -11,8 +11,8 @@ dataset:
   resize_type: 'padded'
   train: {
     roots: [
-        'data/hw/training/label',
-        'data/hw/training/unlabel',
+        'data/training/label',
+        'data/training/unlabel',
     ],
     # weights: ~,
     weights: [ 0.5, 0.5],
@@ -20,13 +20,13 @@ dataset:
   }
   valid: {
     roots: [
-        'data/hw/validation',
+        'data/validation',
     ],
     batch_size: 2
   }
   test: {
     roots: [
-        'data/hw/evaluation',
+        'data/evaluation',
         # 'data/evaluation/addition',
     ],
     batch_size: 1
@@ -65,7 +65,7 @@ model:
   name: 'semimtr.modules.model_seqclr_vision.SeqCLRModel'
   checkpoint: ~
   vision: {
-    mcmae_checkpoint: workdir/bkai_mcmae-s_weight.pth,
+    # mcmae_checkpoint: workdir/bkai_mcmae-s_weight.pth,
     loss_weight: 1.,
     attention: 'position',
     backbone: 'mcmae',

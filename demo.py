@@ -6,6 +6,7 @@ import os
 import PIL
 import cv2
 import numpy as np
+import csv
 import torch
 import torch.nn.functional as F
 import tqdm
@@ -89,10 +90,10 @@ def load(model, file, device=None, strict=True):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/semimtr_finetune.yaml',
+    parser.add_argument('--config', type=str, default='configs/semimtr_mcmae_finetune.yaml',
                         help='path to config file')
-    parser.add_argument('--input', type=str, default='figs/test')
-    parser.add_argument('--cuda', type=int, default=-1)
+    parser.add_argument('--input', type=str, default='data/public_test')
+    parser.add_argument('--cuda', type=int, default=0)
     parser.add_argument('--checkpoint', type=str,
                         default='workdir/consistency-regularization/best-consistency-regularization.pth')
     parser.add_argument('--model_eval', type=str, default='alignment',
@@ -107,9 +108,9 @@ def main():
 
     Logger.init(config.global_workdir, config.global_name, config.global_phase)
     Logger.enable_file()
-    # logging.info(config)
+    logging.info(config)
 
-    # logging.info('Construct model.')
+    logging.info('Construct model.')
     model = get_model(config).to(device)
     model = load(model, config.model_checkpoint, device=device)
     charset = CharsetMapper(filename=config.dataset_charset_path,
@@ -130,14 +131,14 @@ def main():
         res = model(img, forward_only_teacher=True)
         pt_text, _, __ = postprocess(res, charset, config.model_eval)
         pt_outputs[path] = pt_text[0]
-        # logging.info(f'SemiMTR Prediction of the path: {path} is: {pt_text[0]}')
-        logging.info(f'{os.path.basename(path)} {pt_text[0]}')
+        logging.info(f'SemiMTR Prediction of the path: {path} is: {pt_text[0]}')
     return pt_outputs
 
 
 if __name__ == '__main__':
     pt_outputs = main()
-    print('Finish!')
-    # logging.info('Finished!')
-    # for k, v in pt_outputs.items():
-    #     print(k, v)
+    logging.info('Finished!')
+    with open('prediction.txt','w',encoding='utf-8',newline='') as f:
+        w = csv.writer(f,delimiter='\t',quoting=3)
+        for key,values in sorted(pt_outputs.items()):
+            w.writerow([os.path.basename(key),values])

@@ -178,7 +178,7 @@ class ImageDataset(Dataset):
                 len_issue = 0 < self.max_length < len(label) or len(label) <= 0
 
                 # Remove label has length=1 and is a punctuation 
-                single_punctuation = len(label) == 1 and label in '!"#$%&''()*+,-./:;<=>?@[\]^_`{|}~ '
+                single_punctuation = len(label) == 1 and label in '!"#$%&\'()*+,-./:;<=>?@[\\]^_{|}~° '
 
                 if (self.check_length and len_issue) or (self.filter_single_punctuation and single_punctuation):
                     return self._next_image()
@@ -266,7 +266,7 @@ class TextDataset(Dataset):
         if self.is_training and self.use_sm: self.sm = SpellingMutation(charset=self.charset)
 
         dtype = {'inp': str, 'gt': str}
-        self.df = pd.read_csv(self.path, dtype=dtype, delimiter=delimiter, na_filter=False)
+        self.df = pd.read_csv(self.path, dtype=dtype, delimiter=delimiter, na_filter=False,quoting=3)
         self.inp_col, self.gt_col = 0, 1
 
     def __len__(self):
